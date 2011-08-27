@@ -20,6 +20,8 @@ import tidy
 import codecs 
 import platform
 
+#import pdb # For debugging
+
 class URLopener(urllib.FancyURLopener):
     version = 'GetBook.py/0.1 '+platform.platform()+' (+http://guavaduck.com/)'
 urlopener=URLopener()
@@ -62,7 +64,8 @@ n_chapters=len(chapters)
 chapter_titles=['']*n_chapters
 chapter_texts=['']*n_chapters
 
-tidy_options = dict(output_xhtml=1, add_xml_decl=1, indent=1, tidy_mark=0, char_encoding='utf8')
+xhtml_options = dict(output_xhtml=1, add_xml_decl=1, indent=1, tidy_mark=0, char_encoding='utf8', clean=1, numeric_entities=1,enclose_block_text=1,doctype='strict',anchor_as_name=0)
+xml_options = dict(indent=1, tidy_mark=0, numeric_entities=1,input_xml=1)
 #tidy_options = dict(output_xhtml=1, add_xml_decl=1, indent=1, tidy_mark=0)
 
 def chapterlink(matchobj):
@@ -79,6 +82,8 @@ for n in range(n_chapters):
     chapter_titles[n]=re.search('(?<=<title>'+book_title+' - ).+?(?=</title>)',s_chapter).group(0)
     chapter_text=re.findall("<div id='content_readable'>[\s\S]*?(?=</div>)",s_chapter)[0]
     chapter_text=re.sub('http.+?chapid=([0-9]+)',chapterlink,chapter_text)
+    chapter_text=re.sub('"_','"',chapter_text)
+    chapter_text=re.sub('#_','#',chapter_text)
     chapter_texts[n]=re.sub('\n','\n\t\t',chapter_text)
     f.close()
     try:
@@ -128,7 +133,7 @@ f.write('''<?xml version="1.0"?>
    <dc:identifier id="BookId">urn:uuid:'''+book_url+'''</dc:identifier>
  </metadata>
  <manifest>
-  <item id="ncx" href="toc.ncx" media-type="text/xml" />
+  <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml" />
   <item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>''')
 
 for n in range(n_chapters):
@@ -149,8 +154,7 @@ f.write('''
 </package>''')
 f.close()
 
-f=codecs.open('toc.ncx', 'w', 'utf-8')
-f.write('''<?xml version="1.0" encoding="UTF-8"?>
+toc_string = '''<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
   <head>
     <meta name="dtb:uid" content="'''+book_url+'''"/>
@@ -167,26 +171,32 @@ f.write('''<?xml version="1.0" encoding="UTF-8"?>
         <text>Title Page</text>
       </navLabel>
       <content src="title.xhtml"/>
-    </navPoint>''')
+    </navPoint>'''
+    
 for n in range(n_chapters):
-    f.write('''
+    toc_string=toc_string+'''
     <navPoint id="chapter'''+str(n)+'''" playOrder="'''+str(n+2)+'''">
       <navLabel>
         <text>'''+chapter_titles[n]+'''</text>
       </navLabel>
       <content src="chapter'''+str(n)+'''.xhtml"/>
-    </navPoint>''')
-f.write('''
+    </navPoint>'''
+
+toc_string=toc_string+'''
   </navMap>
-</ncx>''')
+</ncx>'''
+
+f=codecs.open('toc.ncx', 'w', 'utf-8')
+f.write(str(tidy.parseString((toc_string).encode('utf-8'),**xml_options)))
+f.close()
 
 f=codecs.open('title.xhtml','w','utf-8')
-f.write(str(tidy.parseString('<html>\n\t<head>\n\t\t<title>'+book_title+'</title>\n\t</head>\n\t<body>\n\t\t<center><h1>'+book_title+'</h1>\n\t\t<h2>by '+book_author+'</h2></center>\n\t</body>\n</html>', **tidy_options)))
+f.write(str(tidy.parseString('<html>\n\t<head>\n\t\t<title>'+book_title+'</title>\n\t</head>\n\t<body>\n\t\t<div id="book_title"><h1>'+book_title+'</h1>\n\t\t<h2>by '+book_author+'</h2></div>\n\t</body>\n</html>', **xhtml_options)))
 f.close()
 
 for n in range(n_chapters):
     f=open('chapter'+str(n)+'.xhtml','w')
-    f.write(str(tidy.parseString(('<html>\n\t<head>\n\t\t<title>'+chapter_titles[n]+'</title>\n\t</head>\n\t<body>\n\t\t<center><h1>'+chapter_titles[n]+'''</h1></center>\n\t\t'''+chapter_texts[n]+'\n\t</body>\n</html>').encode('utf-8'), **tidy_options)))
+    f.write(str(tidy.parseString(('<html>\n\t<head>\n\t\t<title>'+chapter_titles[n]+'</title>\n\t</head>\n\t<body>\n\t\t<div id="chapter_title"><h1>'+chapter_titles[n]+'''</h1></div>\n\t\t'''+chapter_texts[n]+'\n\t</body>\n</html>').encode('utf-8'), **xhtml_options)))
     f.close()
 
 os.chdir('../..')
