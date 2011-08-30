@@ -32,20 +32,22 @@ print 'by Matt Turner (http://guavaduck.com/)'
 print '--'
 print ''
 
-if len(sys.argv)>1:
-    book_id=sys.argv[1]
-else:
-    book_id=raw_input('Book id? ')
-    
 create_book=False
 create_epub=False
 
 for arg in sys.argv:
+    try:
+        int(arg)
+        book_id=arg
+    except:
+        pass
     if arg=='book':
         create_book=True
     if arg=='epub':
         create_epub=True
         
+if not book_id:
+    book_id=raw_input('Book id? ')
 if create_book==False:
     create_epub=True
 
@@ -116,6 +118,10 @@ os.chdir(book_path)
 
 os.mkdir('source')
 os.chdir('source')
+
+f=codecs.open('title.xhtml','w','utf-8')
+f.write(str(tidy.parseString('<html>\n\t<head>\n\t\t<title>'+book_title+'</title>\n\t\t<link rel="stylesheet" type="text/css" href="style.css" />\n\t</head>\n\t<body>\n\t\t<div id="book_title"><h1>'+book_title+'</h1>\n\t\t<h2>by '+book_author+'</h2></div>\n\t</body>\n</html>', **xhtml_options)))
+f.close()
 
 for n in range(n_chapters):
     f=open('chapter'+str(n)+'.xhtml','w')
@@ -212,10 +218,6 @@ if create_epub:
     f=codecs.open('toc.ncx', 'w', 'utf-8')
     f.write(str(tidy.parseString((toc_string).encode('utf-8'),**xml_options)))
     f.close()
-
-    f=codecs.open('title.xhtml','w','utf-8')
-    f.write(str(tidy.parseString('<html>\n\t<head>\n\t\t<title>'+book_title+'</title>\n\t\t<link rel="stylesheet" type="text/css" href="style.css" />\n\t</head>\n\t<body>\n\t\t<div id="book_title"><h1>'+book_title+'</h1>\n\t\t<h2>by '+book_author+'</h2></div>\n\t</body>\n</html>', **xhtml_options)))
-    f.close()
     
     for name in glob.glob("../source/*"):
         shutil.copy(name,'./')
@@ -239,6 +241,26 @@ if create_epub:
     shutil.rmtree('OEBPS')
     os.remove('mimetype')
     os.chdir('..')
+    
+if create_book:
+
+    os.chdir('source')
+    f = open('copyright.xhtml','w')
+    f.close()
+    os.chdir('..')
+    
+    f = codecs.open(book_path+'.book','w','utf-8')
+    f.write('Title: '+book_title+'\n')
+    f.write('Author: '+book_author+'\n')
+    f.write('URL: '+book_url+'\n')
+    f.write('Language: en\nCover: source/cover.jpg\nCSS: source/style.css\n\n')
+    f.write('Title Page | source/title.xhtml\n')
+    f.write('Copyright | source/copyright.xhtml\n')
+    
+    for n in range(n_chapters):
+        f.write('Chapter '+str(n)+' - '+chapter_titles[n]+' | source/chapter'+str(n)+'.xhtml\n')
+    
+    f.close
     
 if not create_book:
     shutil.rmtree(book_path)
