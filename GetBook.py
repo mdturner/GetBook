@@ -36,6 +36,18 @@ if len(sys.argv)>1:
     book_id=sys.argv[1]
 else:
     book_id=raw_input('Book id? ')
+    
+create_book=False
+create_epub=False
+
+for arg in sys.argv:
+    if arg=='book':
+        create_book=True
+    if arg=='epub':
+        create_epub=True
+        
+if create_book==False:
+    create_epub=True
 
 book_url='http://maxwellinstitute.byu.edu/publications/books/?bookid='+book_id
 
@@ -100,116 +112,133 @@ while os.path.exists(book_path) or os.path.exists(book_path+'.epub'):
     book_path=book_path0+'.'+str(n_path)
 
 os.mkdir(book_path)
-
 os.chdir(book_path)
 
-f=open('mimetype','w')
-f.write('application/epub+zip')
-f.close()
-
-os.mkdir('META-INF')
-os.chdir('META-INF')
-f=open('container.xml','w')
-f.write('''<?xml version="1.0"?>
-<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
-  <rootfiles>
-    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
-  </rootfiles>
-</container>''')
-f.close()
-os.chdir('..')
-
-os.mkdir('OEBPS')
-os.chdir('OEBPS')
-f=codecs.open('content.opf','w','utf-8')
-f.write('''<?xml version="1.0"?>
-<package version="2.0" xmlns="http://www.idpf.org/2007/opf"
-         unique-identifier="BookId">
- <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"
-           xmlns:opf="http://www.idpf.org/2007/opf">
-   <dc:title>'''+book_title+'''</dc:title> 
-   <dc:creator opf:role="aut">'''+book_author+'''</dc:creator>
-   <dc:language>en-US</dc:language> 
-   <dc:identifier id="BookId">urn:uuid:'''+book_url+'''</dc:identifier>
- </metadata>
- <manifest>
-  <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml" />
-  <item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>''')
-
-for n in range(n_chapters):
-    f.write('''
-  <item id="chapter'''+str(n)+'''" href="chapter'''+str(n)+'''.xhtml" media-type="application/xhtml+xml"/>''')
-  
-f.write('''
- </manifest>
- <spine toc="ncx">
-  <itemref idref="title"/>''')
- 
-for n in range(n_chapters):
-    f.write('''
-  <itemref idref="chapter'''+str(n)+'''"/>''')
-
-f.write('''
- </spine>
-</package>''')
-f.close()
-
-toc_string = '''<?xml version="1.0" encoding="UTF-8"?>
-<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
-  <head>
-    <meta name="dtb:uid" content="'''+book_url+'''"/>
-    <meta name="dtb:depth" content="1"/>
-    <meta name="dtb:totalPageCount" content="0"/>
-    <meta name="dtb:maxPageNumber" content="0"/>
-  </head>
-  <docTitle>
-    <text>'''+book_title+'''</text>
-  </docTitle>
-  <navMap>
-    <navPoint id="title" playOrder="1">
-      <navLabel>
-        <text>Title Page</text>
-      </navLabel>
-      <content src="title.xhtml"/>
-    </navPoint>'''
-    
-for n in range(n_chapters):
-    toc_string=toc_string+'''
-    <navPoint id="chapter'''+str(n)+'''" playOrder="'''+str(n+2)+'''">
-      <navLabel>
-        <text>'''+chapter_titles[n]+'''</text>
-      </navLabel>
-      <content src="chapter'''+str(n)+'''.xhtml"/>
-    </navPoint>'''
-
-toc_string=toc_string+'''
-  </navMap>
-</ncx>'''
-
-f=codecs.open('toc.ncx', 'w', 'utf-8')
-f.write(str(tidy.parseString((toc_string).encode('utf-8'),**xml_options)))
-f.close()
-
-f=codecs.open('title.xhtml','w','utf-8')
-f.write(str(tidy.parseString('<html>\n\t<head>\n\t\t<title>'+book_title+'</title>\n\t</head>\n\t<body>\n\t\t<div id="book_title"><h1>'+book_title+'</h1>\n\t\t<h2>by '+book_author+'</h2></div>\n\t</body>\n</html>', **xhtml_options)))
-f.close()
+os.mkdir('source')
+os.chdir('source')
 
 for n in range(n_chapters):
     f=open('chapter'+str(n)+'.xhtml','w')
-    f.write(str(tidy.parseString(('<html>\n\t<head>\n\t\t<title>'+chapter_titles[n]+'</title>\n\t</head>\n\t<body>\n\t\t<div id="chapter_title"><h1>'+chapter_titles[n]+'''</h1></div>\n\t\t'''+chapter_texts[n]+'\n\t</body>\n</html>').encode('utf-8'), **xhtml_options)))
+    f.write(str(tidy.parseString(('<html>\n\t<head>\n\t\t<title>'+chapter_titles[n]+'</title>\n\t\t<link rel="stylesheet" type="text/css" href="style.css" />\n\t</head>\n\t<body>\n\t\t<div id="chapter_title"><h1>'+chapter_titles[n]+'''</h1></div>\n\t\t'''+chapter_texts[n]+'\n\t</body>\n</html>').encode('utf-8'), **xhtml_options)))
+    f.close()
+    
+os.chdir('..')
+
+if create_epub:
+    f=open('mimetype','w')
+    f.write('application/epub+zip')
     f.close()
 
-os.chdir('../..')
+    os.mkdir('META-INF')
+    os.chdir('META-INF')
+    f=open('container.xml','w')
+    f.write('''<?xml version="1.0"?>
+    <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+      <rootfiles>
+        <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+      </rootfiles>
+    </container>''')
+    f.close()
+    os.chdir('..')
 
-file = zipfile.ZipFile(book_path+'.epub', "w")
-os.chdir(book_path)
-file.write('mimetype','mimetype',zipfile.ZIP_STORED)
-file.write('META-INF/container.xml','META-INF/container.xml',zipfile.ZIP_DEFLATED)
-#file.write('META-INF/container.xml','META-INF/container.xml',zipfile.ZIP_STORED)
-for name in glob.glob("OEBPS/*"):
-    file.write(name,name,zipfile.ZIP_DEFLATED)
-#    file.write(name,name,zipfile.ZIP_STORED)
-file.close()
+    os.mkdir('OEBPS')
+    os.chdir('OEBPS')
+    f=codecs.open('content.opf','w','utf-8')
+    f.write('''<?xml version="1.0"?>
+    <package version="2.0" xmlns="http://www.idpf.org/2007/opf"
+             unique-identifier="BookId">
+     <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"
+               xmlns:opf="http://www.idpf.org/2007/opf">
+       <dc:title>'''+book_title+'''</dc:title> 
+       <dc:creator opf:role="aut">'''+book_author+'''</dc:creator>
+       <dc:language>en-US</dc:language> 
+       <dc:identifier id="BookId">urn:uuid:'''+book_url+'''</dc:identifier>
+     </metadata>
+     <manifest>
+      <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml" />
+      <item id="stylesheet" href="style.css" media-type="text/css"/>
+      <item id="title" href="title.xhtml" media-type="application/xhtml+xml"/>''')
 
-os.chdir('..')
-shutil.rmtree(book_path)
+    for n in range(n_chapters):
+        f.write('''
+      <item id="chapter'''+str(n)+'''" href="chapter'''+str(n)+'''.xhtml" media-type="application/xhtml+xml"/>''')
+      
+    f.write('''
+     </manifest>
+     <spine toc="ncx">
+      <itemref idref="title"/>''')
+     
+    for n in range(n_chapters):
+        f.write('''
+      <itemref idref="chapter'''+str(n)+'''"/>''')
+
+    f.write('''
+     </spine>
+    </package>''')
+    f.close()
+
+    toc_string = '''<?xml version="1.0" encoding="UTF-8"?>
+    <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+      <head>
+        <meta name="dtb:uid" content="'''+book_url+'''"/>
+        <meta name="dtb:depth" content="1"/>
+        <meta name="dtb:totalPageCount" content="0"/>
+        <meta name="dtb:maxPageNumber" content="0"/>
+      </head>
+      <docTitle>
+        <text>'''+book_title+'''</text>
+      </docTitle>
+      <navMap>
+        <navPoint id="title" playOrder="1">
+          <navLabel>
+            <text>Title Page</text>
+          </navLabel>
+          <content src="title.xhtml"/>
+        </navPoint>'''
+        
+    for n in range(n_chapters):
+        toc_string=toc_string+'''
+        <navPoint id="chapter'''+str(n)+'''" playOrder="'''+str(n+2)+'''">
+          <navLabel>
+            <text>'''+chapter_titles[n]+'''</text>
+          </navLabel>
+          <content src="chapter'''+str(n)+'''.xhtml"/>
+        </navPoint>'''
+
+    toc_string=toc_string+'''
+      </navMap>
+    </ncx>'''
+
+    f=codecs.open('toc.ncx', 'w', 'utf-8')
+    f.write(str(tidy.parseString((toc_string).encode('utf-8'),**xml_options)))
+    f.close()
+
+    f=codecs.open('title.xhtml','w','utf-8')
+    f.write(str(tidy.parseString('<html>\n\t<head>\n\t\t<title>'+book_title+'</title>\n\t\t<link rel="stylesheet" type="text/css" href="style.css" />\n\t</head>\n\t<body>\n\t\t<div id="book_title"><h1>'+book_title+'</h1>\n\t\t<h2>by '+book_author+'</h2></div>\n\t</body>\n</html>', **xhtml_options)))
+    f.close()
+    
+    for name in glob.glob("../source/*"):
+        shutil.copy(name,'./')
+        
+    f=open('style.css','w')
+    f.close()
+
+    os.chdir('../..')
+
+    file = zipfile.ZipFile(book_path+'.epub', "w")
+    os.chdir(book_path)
+    file.write('mimetype','mimetype',zipfile.ZIP_STORED)
+    file.write('META-INF/container.xml','META-INF/container.xml',zipfile.ZIP_DEFLATED)
+    #file.write('META-INF/container.xml','META-INF/container.xml',zipfile.ZIP_STORED)
+    for name in glob.glob("OEBPS/*"):
+        file.write(name,name,zipfile.ZIP_DEFLATED)
+    #    file.write(name,name,zipfile.ZIP_STORED)
+    file.close()
+    
+    shutil.rmtree('META-INF')
+    shutil.rmtree('OEBPS')
+    os.remove('mimetype')
+    os.chdir('..')
+    
+if not create_book:
+    shutil.rmtree(book_path)
