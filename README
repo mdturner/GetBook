@@ -1,3 +1,5 @@
+**Update:** It looks like the Maxwell Institute changed their website and the script no longer works. It's fixable, but I don't know when I'll get around to it. 
+
 GetBook is a Python script to create epub ebooks or .book files and folders (see http://bencrowder.net/blog/2010/06/md2epub/) from the online texts made available by the Neal A. Maxwell Institute for Religious Scholarship at Brigham Young University (http://maxwellinstitute.byu.edu/).  
 
 Requirements:
